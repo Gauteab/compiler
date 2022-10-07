@@ -2394,7 +2394,7 @@ data Format
   | FormatNoOutline
   | FormatBadOutline Outline
   | FormatValidateNotCorrectlyFormatted
-  | FormatParseError BS.ByteString Error.Syntax.Error
+  | FormatParseError BS.ByteString Error.Syntax.Module
 
 formatToReport :: Format -> Help.Report
 formatToReport problem =
@@ -2438,4 +2438,4 @@ formatToReport problem =
     FormatParseError source err ->
       Help.jsonReport (Report._title report) Nothing (Report._message report)
       where
-        report = Error.Syntax.toReport (Code.toSource source) err
+        report = Error.Syntax.toReport (Code.toSource source) (Error.Syntax.ParseError err)

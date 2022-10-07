@@ -49,7 +49,7 @@ run paths flags = do
 
 data FormattingResult
   = FormattingSuccess FormattingChange BSL.ByteString
-  | FormattingFailure BS.ByteString Syntax.Error
+  | FormattingFailure BS.ByteString Syntax.Module
 
 data FormattingChange = Changed | NotChanged
 
@@ -227,7 +227,7 @@ formatExistingFile projectType path = do
 
 formatByteString :: Parse.ProjectType -> BS.ByteString -> FormattingResult
 formatByteString projectType original =
-  let formattedResult = B.toLazyByteString . Format.toByteStringBuilder . Normalize.normalize projectType <$> Parse.fromByteString projectType original
+  let formattedResult = B.toLazyByteString . Format.toByteStringBuilder . Normalize.normalize projectType <$> Parse.fromByteStringIgnoreNonParseErrors projectType original
    in case formattedResult of
         Left e -> FormattingFailure original e
         Right formatted

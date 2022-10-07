@@ -6,6 +6,7 @@
 
 module Parse.Module
   ( fromByteString,
+    fromByteStringIgnoreNonParseErrors,
     ProjectType (..),
     isKernel,
     chompImports,
@@ -36,6 +37,10 @@ fromByteString projectType source =
   case P.fromByteString (chompModule projectType) E.ModuleBadEnd source of
     Right modul -> checkModule projectType modul
     Left err -> Left (E.ParseError err)
+
+fromByteStringIgnoreNonParseErrors :: ProjectType -> BS.ByteString -> Either E.Module Src.Module
+fromByteStringIgnoreNonParseErrors projectType source =
+  moduleToSourceModule <$> P.fromByteString (chompModule projectType) E.ModuleBadEnd source
 
 -- PROJECT TYPE
 
@@ -74,6 +79,24 @@ chompModule projectType =
     return (Module header imports infixes decls)
 
 -- CHECK MODULE
+
+-- | transform a module without checking additional syntax errors
+moduleToSourceModule :: Module -> Src.Module
+moduleToSourceModule (Module maybeHeader imports infixes decls) =
+  let (values, unions, aliases, ports) = categorizeDecls [] [] [] [] 0 decls
+   in case maybeHeader of
+        Just (Header name effects exports docs comments) ->
+          Src.Module (Just name) exports (toDocs docs decls) imports values unions aliases infixes comments $
+            case effects of
+              NoEffects _ -> Src.NoEffects
+              Ports _ portComments -> Src.Ports ports portComments
+              Manager region manager managerComments -> Src.Manager region manager managerComments
+        Nothing ->
+          let comments = SC.HeaderComments [] [] [] [] [] []
+           in Src.Module Nothing (A.At A.one Src.Open) (Src.NoDocs A.one) imports values unions aliases infixes comments $
+                case ports of
+                  [] -> Src.NoEffects
+                  _ : _ -> Src.Ports ports (SC.PortsComments [])
 
 checkModule :: ProjectType -> Module -> Either E.Error Src.Module
 checkModule projectType (Module maybeHeader imports infixes decls) =
